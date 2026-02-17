@@ -133,6 +133,7 @@ private:
    * true, but may be useful to disable.
    */
   UPROPERTY(
+      EditAnywhere,
       BlueprintReadWrite,
       BlueprintGetter = GetDetectTransformChanges,
       BlueprintSetter = SetDetectTransformChanges,

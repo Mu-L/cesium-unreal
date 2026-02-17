@@ -158,6 +158,7 @@ void UCesiumGlobeAnchorComponent::SetDetectTransformChanges(bool Value) {
     pOwnerRoot->TransformUpdated.AddUObject(
         this,
         &UCesiumGlobeAnchorComponent::_onActorTransformChanged);
+    this->_setNewActorToECEFFromRelativeTransform();
   } else {
     pOwnerRoot->TransformUpdated.RemoveAll(this);
   }
