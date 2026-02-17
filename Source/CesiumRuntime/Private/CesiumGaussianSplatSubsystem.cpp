@@ -13,6 +13,18 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 
+/**
+ * An entirely arbitrary number of frames to wait between resetting the Niagara
+ * system. This helps avoid a gratuitous number of GPU uploads that can cause an
+ * assertion failure due to an Unreal bug.
+ *
+ * If you are still encountering this issue and an official fix has not yet been
+ * released for the Unreal version you are using, make the following change: In
+ * `Source/Niagara/Private/NiagaraGpuComputeDispatch.cpp`, line 2315 should be
+ * changed to
+ * `FComputeShaderUtils::GetGroupCountWrapped(FMath::DivideAndRoundUp(SortInfo.ParticleCount,
+ * NIAGARA_KEY_GEN_THREAD_COUNT))`.
+ */
 const int32 RESET_FRAME_COUNT = 5;
 
 namespace {
@@ -99,10 +111,10 @@ void UCesiumGaussianSplatSubsystem::InitializeForWorld(UWorld& InWorld) {
        TActorRange<ACesiumGaussianSplatActor>(&InWorld)) {
     // Actor singleton already exists in the world (usually means we stopped a
     // PIE session and returned to the editor world).
-    this->pLastCreatedWorld = &InWorld;
-    this->pNiagaraActor = Actor;
-    this->pNiagaraComponent =
-        this->pNiagaraActor->FindComponentByClass<UNiagaraComponent>();
+    this->_pLastCreatedWorld = &InWorld;
+    this->_pNiagaraActor = Actor;
+    this->_pNiagaraComponent =
+        this->_pNiagaraActor->FindComponentByClass<UNiagaraComponent>();
     this->RecomputeBounds();
     this->UpdateNiagaraComponent();
     return;
@@ -151,22 +163,22 @@ void UCesiumGaussianSplatSubsystem::InitializeForWorld(UWorld& InWorld) {
   SpawnParams.AttachToComponent = SceneComponent;
   SpawnParams.bAutoActivate = true;
 
-  this->pLastCreatedWorld = &InWorld;
-  this->pNiagaraComponent =
+  this->_pLastCreatedWorld = &InWorld;
+  this->_pNiagaraComponent =
       UNiagaraFunctionLibrary::SpawnSystemAttachedWithParams(SpawnParams);
-  if (!IsValid(this->pNiagaraComponent)) {
+  if (!IsValid(this->_pNiagaraComponent)) {
     // Failed to create niagara component - make sure it's null and we'll try
     // again next time.
-    this->pNiagaraComponent = nullptr;
+    this->_pNiagaraComponent = nullptr;
     UE_LOG(
         LogCesium,
         Error,
         TEXT("Unable to create gaussian splat Niagara component"));
     return;
   }
-  this->pNiagaraComponent->Activate();
-  this->pNiagaraActor = SplatActor;
-  SplatActor->AddInstanceComponent(this->pNiagaraComponent);
+  this->_pNiagaraComponent->Activate();
+  this->_pNiagaraActor = SplatActor;
+  SplatActor->AddInstanceComponent(this->_pNiagaraComponent);
 
   this->UpdateNiagaraComponent();
 }
@@ -179,33 +191,33 @@ void UCesiumGaussianSplatSubsystem::Initialize(
   //
   // Because `Initialize` is never called on the CDO, we can use this as a
   // marker of whether we're in the *true* singleton instance of this subsystem.
-  bIsTickEnabled = true;
+  _isTickEnabled = true;
 }
 
 void UCesiumGaussianSplatSubsystem::Deinitialize() {
-  bIsTickEnabled = false;
-  if (IsValid(this->pNiagaraActor)) {
-    this->pNiagaraActor->Destroy();
+  _isTickEnabled = false;
+  if (IsValid(this->_pNiagaraActor)) {
+    this->_pNiagaraActor->Destroy();
   }
 
-  this->pNiagaraActor = nullptr;
-  this->pNiagaraComponent = nullptr;
-  this->pLastCreatedWorld = nullptr;
+  this->_pNiagaraActor = nullptr;
+  this->_pNiagaraComponent = nullptr;
+  this->_pLastCreatedWorld = nullptr;
 }
 
 void UCesiumGaussianSplatSubsystem::RegisterSplat(
     UCesiumGltfGaussianSplatComponent* Component) {
   check(Component);
 
-  if (IsValid(this->pNiagaraComponent)) {
+  if (IsValid(this->_pNiagaraComponent)) {
     // Lock buffers when adding components to avoid adding components while
     // uploading previous components to GPU
     FScopeLock ScopeLock = this->GetSplatInterface()->LockGaussianBuffers();
     this->SplatComponents.Add(Component);
-    this->NumSplats += Component->Data.NumSplats;
+    this->_numSplats += Component->Data.NumSplats;
   } else {
     this->SplatComponents.Add(Component);
-    this->NumSplats += Component->Data.NumSplats;
+    this->_numSplats += Component->Data.NumSplats;
   }
 
   this->UpdateNiagaraComponent();
@@ -215,35 +227,35 @@ void UCesiumGaussianSplatSubsystem::UnregisterSplat(
     UCesiumGltfGaussianSplatComponent* Component) {
   check(Component);
 
-  if (IsValid(this->pNiagaraComponent)) {
+  if (IsValid(this->_pNiagaraComponent)) {
     FScopeLock ScopeLock = this->GetSplatInterface()->LockGaussianBuffers();
     this->SplatComponents.Remove(Component);
-    this->NumSplats -= Component->Data.NumSplats;
+    this->_numSplats -= Component->Data.NumSplats;
   } else {
     this->SplatComponents.Remove(Component);
-    this->NumSplats -= Component->Data.NumSplats;
+    this->_numSplats -= Component->Data.NumSplats;
   }
 
   this->UpdateNiagaraComponent();
 }
 
 void UCesiumGaussianSplatSubsystem::RecomputeBounds() {
-  if (IsValid(this->pNiagaraComponent)) {
+  if (IsValid(this->_pNiagaraComponent)) {
     const FBox Bounds = CalculateBounds(this->SplatComponents);
-    this->pNiagaraComponent->SetSystemFixedBounds(Bounds);
+    this->_pNiagaraComponent->SetSystemFixedBounds(Bounds);
     UE_LOG(LogCesium, Log, TEXT("Setting bounds: %s"), *Bounds.ToString());
     GetSplatInterface()->RefreshMatrices();
   }
 }
 
 void UCesiumGaussianSplatSubsystem::UpdateNiagaraComponent() {
-  if (IsValid(this->pNiagaraComponent)) {
-    this->pNiagaraComponent->SetVariableInt(
+  if (IsValid(this->_pNiagaraComponent)) {
+    this->_pNiagaraComponent->SetVariableInt(
         FName(TEXT("GridSize")),
-        (int32)std::ceil(std::cbrt((double)this->NumSplats)));
+        (int32)std::ceil(std::cbrt((double)this->_numSplats)));
     GetSplatInterface()->Refresh();
-    this->bNeedsReset = true;
-    this->ResetFrameCounter = RESET_FRAME_COUNT;
+    this->_needsReset = true;
+    this->_resetFrameCounter = RESET_FRAME_COUNT;
   }
 }
 
@@ -251,29 +263,29 @@ UCesiumGaussianSplatDataInterface*
 UCesiumGaussianSplatSubsystem::GetSplatInterface() const {
   return UNiagaraFunctionLibrary::GetDataInterface<
       UCesiumGaussianSplatDataInterface>(
-      this->pNiagaraComponent,
+      this->_pNiagaraComponent,
       FName(TEXT("SplatInterface")));
 }
 
 void UCesiumGaussianSplatSubsystem::Tick(float DeltaTime) {
-  if (!this->bIsTickEnabled) {
+  if (!this->_isTickEnabled) {
     return;
   }
 
-  if (this->bNeedsReset) {
-    this->ResetFrameCounter -= 1;
+  if (this->_needsReset) {
+    this->_resetFrameCounter -= 1;
   }
 
   UWorld* World = GetPrimaryWorld();
 
   if (!IsValid(World)) {
-    if (IsValid(this->pNiagaraActor)) {
-      this->pNiagaraActor->Destroy();
+    if (IsValid(this->_pNiagaraActor)) {
+      this->_pNiagaraActor->Destroy();
     }
 
-    this->pNiagaraActor = nullptr;
-    this->pNiagaraComponent = nullptr;
-    this->pLastCreatedWorld = nullptr;
+    this->_pNiagaraActor = nullptr;
+    this->_pNiagaraComponent = nullptr;
+    this->_pLastCreatedWorld = nullptr;
     return;
   }
 
@@ -285,16 +297,16 @@ void UCesiumGaussianSplatSubsystem::Tick(float DeltaTime) {
     return;
   }
 
-  if (IsValid(this->pNiagaraActor)) {
-    if (this->bNeedsReset && this->ResetFrameCounter <= 0) {
+  if (IsValid(this->_pNiagaraActor)) {
+    if (this->_needsReset && this->_resetFrameCounter <= 0) {
       // We want to avoid calling ResetSystem multiple times a frame, so we
       // combine the calls into one.
-      this->bNeedsReset = false;
-      this->pNiagaraComponent->ResetSystem();
+      this->_needsReset = false;
+      this->_pNiagaraComponent->ResetSystem();
     }
   }
 
-  if (IsValid(this->pNiagaraActor) && World == this->pLastCreatedWorld) {
+  if (IsValid(this->_pNiagaraActor) && World == this->_pLastCreatedWorld) {
     return;
   }
 
@@ -318,5 +330,5 @@ bool UCesiumGaussianSplatSubsystem::IsTickableWhenPaused() const {
 bool UCesiumGaussianSplatSubsystem::IsTickableInEditor() const { return true; }
 
 bool UCesiumGaussianSplatSubsystem::IsTickable() const {
-  return this->bIsTickEnabled;
+  return this->_isTickEnabled;
 }

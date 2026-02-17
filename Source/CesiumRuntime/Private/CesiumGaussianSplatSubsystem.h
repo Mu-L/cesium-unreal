@@ -69,15 +69,15 @@ private:
   void UpdateNiagaraComponent();
   UCesiumGaussianSplatDataInterface* GetSplatInterface() const;
 
-  UNiagaraComponent* pNiagaraComponent = nullptr;
+  UNiagaraComponent* _pNiagaraComponent = nullptr;
 
-  ACesiumGaussianSplatActor* pNiagaraActor = nullptr;
+  ACesiumGaussianSplatActor* _pNiagaraActor = nullptr;
 
-  UWorld* pLastCreatedWorld = nullptr;
-  bool bIsTickEnabled = false;
-  int32 NumSplats = 0;
+  UWorld* _pLastCreatedWorld = nullptr;
+  bool _isTickEnabled = false;
+  int32 _numSplats = 0;
 
   // Dirty way to avoid running too many resets too quickly.
-  int32 ResetFrameCounter = 0;
-  bool bNeedsReset = false;
+  int32 _resetFrameCounter = 0;
+  bool _needsReset = false;
 };
