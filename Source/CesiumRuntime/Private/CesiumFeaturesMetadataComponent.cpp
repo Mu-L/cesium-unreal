@@ -2248,6 +2248,9 @@ void GenerateMaterialNodes(
   }
 
   NodeX += BeginSectionX + MaximumSectionX;
+  // If no nodes were generated, this prevents the next nodes from spawning on
+  // top of each other.
+  NodeX = FMath::Max(NodeX, 1.5 * Incr);
 
   UMaterialExpressionSetMaterialAttributes* SetMaterialAttributes = nullptr;
   for (const TObjectPtr<UMaterialExpression>& ExistingNode :
