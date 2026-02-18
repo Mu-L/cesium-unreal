@@ -150,6 +150,7 @@ void UCesiumGlobeAnchorComponent::SetDetectTransformChanges(bool Value) {
   if (DetectTransformChanges == Value) {
     return;
   }
+  DetectTransformChanges = Value;
   USceneComponent* pOwnerRoot = this->_getRootComponent(/*warnIfNull*/ true);
   if (!IsValid(pOwnerRoot)) {
     return;
@@ -247,6 +248,9 @@ void UCesiumGlobeAnchorComponent::SnapToEastSouthUp() {
 void UCesiumGlobeAnchorComponent::Sync() {
   // If we don't have a actor -> ECEF matrix yet, we must update from the
   // actor's root transform.
+  if (!DetectTransformChanges) {
+    return;
+  }
   bool updateFromTransform = !this->_actorToECEFIsValid;
   if (!updateFromTransform && this->_lastRelativeTransformIsValid) {
     // We may also need to update from the Transform if it has changed
