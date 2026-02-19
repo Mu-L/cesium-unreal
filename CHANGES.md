@@ -10,7 +10,7 @@
 
 - Added support for styling with tileset statistics on `UCesiumFeaturesMetadataComponent`.
 - Added `UCesiumPropertyArrayBlueprintLibrary::ToString` to print the contents of a `FCesiumPropertyArray` as a string.
-- Added support for loading gaussian splat tilesets.
+- Added support for loading tilesets with the `KHR_gaussian_splatting` extension.
 
 ##### Fixes :wrench:
 
