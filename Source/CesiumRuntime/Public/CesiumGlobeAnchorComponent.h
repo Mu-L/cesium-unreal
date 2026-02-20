@@ -296,7 +296,7 @@ public:
   void SetAdjustOrientationForGlobeWhenMoving(bool Value);
 
   /**
-   * Gets a flag indicating whether to update the globe anchor when the Actors's
+   * Gets a flag indicating whether to update the globe anchor when the Actor's
    * transform changes.
    *
    * This property should usually be enabled, but it may be useful to disable it
@@ -306,7 +306,7 @@ public:
   bool GetDetectTransformChanges() const;
 
   /**
-   * Sets a flag indicating whether to update the globe anchor when the Actors's
+   * Sets a flag indicating whether to update the globe anchor when the Actor's
    * transform changes.
    *
    * This property should usually be enabled, but it may be useful to disable it
