@@ -126,7 +126,7 @@ private:
   bool TeleportWhenUpdatingTransform = true;
 
   /**
-   * The 4x4 transformation matrix from the Actors's local coordinate system to
+   * The 4x4 transformation matrix from the Actor's local coordinate system to
    * the Earth-Centered, Earth-Fixed (ECEF) coordinate system.
    *
    * The ECEF coordinate system is a right-handed system located at the center
@@ -205,7 +205,7 @@ public:
   UCesiumEllipsoid* GetEllipsoid() const;
 
   /**
-   * Gets the 4x4 transformation matrix from the Actors's local coordinate
+   * Gets the 4x4 transformation matrix from the Actor's local coordinate
    * system to the Earth-Centered, Earth-Fixed (ECEF) coordinate system.
    *
    * The ECEF coordinate system is a right-handed system located at the center
@@ -218,7 +218,7 @@ public:
   FMatrix GetActorToEarthCenteredEarthFixedMatrix() const;
 
   /**
-   * Sets the 4x4 transformation matrix from the Actors's local coordinate
+   * Sets the 4x4 transformation matrix from the Actor's local coordinate
    * system to the Earth-Centered, Earth-Fixed (ECEF) coordinate system.
    *
    * The ECEF coordinate system is a right-handed system located at the center
