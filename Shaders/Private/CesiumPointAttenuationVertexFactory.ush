@@ -73,7 +73,7 @@ struct FPositionAndNormalOnlyVertexFactoryInput
 struct FVertexFactoryIntermediates
 {
   	uint PointIndex;
-  	uint CornerIndex;
+  	float2 CornerOffset;
 
   	float3 Position;
   	float4 WorldPosition;
@@ -91,8 +91,9 @@ struct FVertexFactoryIntermediates
 struct FVertexFactoryInterpolantsVSToPS
 {
   	TANGENTTOWORLD_INTERPOLATOR_BLOCK
-  	half4  Color : COLOR0;
-
+  	half4   Color : COLOR0;
+  	float2  CornerOffset : CORNER_OFFSET;
+  
 #if NUM_TEX_COORD_INTERPOLATORS
   	float4  TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2]  : TEXCOORD0;
 #endif
@@ -161,9 +162,24 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
   	uint PointIndex = Input.VertexId / 4;
   	uint CornerIndex = Input.VertexId - (PointIndex * 4);
-
+   	// These offsets generate the quad like so:
+   	// 1 --- 2
+  	// |  /  |
+  	// 0 --- 3
+  	// Unreal uses counter-clockwise winding order, but Cesium models are created
+  	// with a y-inverting transform. To compensate, we create the quad facing the
+  	// wrong way, such that when the transform is applied, the quad faces the right
+  	// way.
+    
+  	// Results in -0.5 for 0, 1 and 0.5 for 2, 3
+  	float OffsetX = CornerIndex / 2 - 0.5;
+  	float OffsetY = -0.5f;
+  	if (CornerIndex == 1 || CornerIndex == 2) {
+   	  	OffsetY = 0.5;
+  	}
+  
   	Intermediates.PointIndex = PointIndex;
-  	Intermediates.CornerIndex = CornerIndex;
+  	Intermediates.CornerOffset = float2(OffsetX, OffsetY);
 
   	Intermediates.Position.x = PositionBuffer[PointIndex * 3 + 0];
   	Intermediates.Position.y = PositionBuffer[PointIndex * 3 + 1];
@@ -213,6 +229,7 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(
   	Interpolants.TangentToWorld0 = float4(Intermediates.TangentToWorld[0], 0);
   	Interpolants.TangentToWorld2 = float4(Intermediates.TangentToWorld[2], Intermediates.TangentToWorldSign);
   	Interpolants.Color = Intermediates.Color;
+  	Interpolants.CornerOffset = Intermediates.CornerOffset;
 
   	#if NUM_TEX_COORD_INTERPOLATORS
   	float2 CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS];
@@ -283,25 +300,13 @@ float3 VertexFactoryGetPreviousInstanceSpacePosition(FVertexFactoryInput Input, 
   return Intermediates.Position;
 }
 
-float4 ApplyAttenuation(float4 WorldPosition, uint CornerIndex) {
-    // These offsets generate the quad like so:
-   	// 1 --- 2
-  	// |  /  |
-  	// 0 --- 3
-  	// Unreal uses counter-clockwise winding order, but Cesium models are created
-    // with a y-inverting transform. To compensate, we create the quad facing the
-    // wrong way, such that when the transform is applied, the quad faces the right
-    // way.
-
-  	// Results in -0.5 for 0, 1 and 0.5 for 2, 3
-  	float OffsetX = CornerIndex / 2 - 0.5;
-  	float OffsetY = -0.5f;
-  	if (CornerIndex == 1 || CornerIndex == 2) {
-  	  	OffsetY = 0.5;
-  	}
-
-  	float4 PositionView = mul(WorldPosition, ResolvedView.TranslatedWorldToView);
-  	float4 PositionClip = mul(WorldPosition, ResolvedView.TranslatedWorldToClip);
+float4 VertexFactoryGetRasterizedWorldPosition(
+  	FVertexFactoryInput Input,
+  	FVertexFactoryIntermediates Intermediates,
+  	float4 InWorldPosition)
+{
+  	float4 PositionView = mul(InWorldPosition, ResolvedView.TranslatedWorldToView);
+  	float4 PositionClip = mul(InWorldPosition, ResolvedView.TranslatedWorldToClip);
 
   	float MaximumPointSize = AttenuationParameters.x;
   	float GeometricError = AttenuationParameters.y;
@@ -309,23 +314,15 @@ float4 ApplyAttenuation(float4 WorldPosition, uint CornerIndex) {
   	float Depth = PositionView.z / 100; // Get depth in meters
   	float PointSize = min((GeometricError / Depth) * DepthMultiplier, MaximumPointSize);
 
-  	float2 PixelOffset = PointSize * float2(OffsetX, OffsetY);
+  	float2 PixelOffset = PointSize * Intermediates.CornerOffset;
   	float2 ScreenOffset = PixelOffset * ResolvedView.ViewSizeAndInvSize.zw;
   	float2 ClipOffset = ScreenOffset * PositionClip.w;
   	float4 ViewOffset = mul(float4(ClipOffset, PositionClip.z, 1), ResolvedView.ClipToView);
   	ViewOffset /= ViewOffset.w;
 
   	// Adjust x-component for the left-handed coordinate system.
-  	float3 AttenuatedPosition = WorldPosition.xyz + (-ViewOffset.x * ResolvedView.ViewRight + ViewOffset.y * ResolvedView.ViewUp);
+  	float3 AttenuatedPosition = InWorldPosition.xyz + (-ViewOffset.x * ResolvedView.ViewRight + ViewOffset.y * ResolvedView.ViewUp);
   	return float4(AttenuatedPosition, 1);
-}
-
-float4 VertexFactoryGetRasterizedWorldPosition(
-  	FVertexFactoryInput Input,
-  	FVertexFactoryIntermediates Intermediates,
-  	float4 InWorldPosition)
-{
-  	return ApplyAttenuation(InWorldPosition, Intermediates.CornerIndex);
 }
 
 float3 VertexFactoryGetPositionForVertexLighting(
@@ -384,6 +381,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
   	Result.Particle.Color = half4(1, 1, 1, 1);
   	Result.TwoSidedSign = 1;
   	Result.VertexColor = Interpolants.Color;
+  	Result.VertexColor.a = length(Interpolants.CornerOffset) > 0.5 ? 0 : Interpolants.Color.a;
 
   	half3 TangentToWorld0 = Interpolants.TangentToWorld0.xyz;
   	half4 TangentToWorld2 = Interpolants.TangentToWorld2;
