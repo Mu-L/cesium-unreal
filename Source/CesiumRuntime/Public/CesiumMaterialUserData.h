@@ -23,12 +23,8 @@ class UCesiumMaterialUserData : public UAssetUserData {
   GENERATED_BODY()
 
 public:
-#if ENGINE_VERSION_5_6_OR_HIGHER
   virtual void PostEditChangeOwner(
       const FPropertyChangedEvent& PropertyChangedEvent) override;
-#else
-  virtual void PostEditChangeOwner() override;
-#endif
 
   void UpdateLayerNames();
 

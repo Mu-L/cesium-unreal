@@ -21,12 +21,6 @@ float3 AttenuationParameters;
 uint InstancedEyeIndex;
 #endif
 
-// This function does not exist in UE 5.0, so remove the function call here
-// to avoid compilation errors.
-#ifndef VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK
-#define VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
-#endif
-
 /*
  * Per-vertex input. Only a position buffer is bound.
  */
