@@ -3485,10 +3485,10 @@ ConstructedPrimitiveComponent createPrimitiveComponent(
       const auto* pPointStyleExtension =
           model.getSafe(model.materials, loadResult.materialIndex)
               .getExtension<CesiumGltf::ExtensionBentleyMaterialsPointStyle>();
-      pPointMesh->diameter =
-          pPointStyleExtension
-              ? static_cast<int32>(pPointStyleExtension->diameter)
-              : 0;
+      pPointMesh->diameter = 0;
+      // pPointStyleExtension
+      //    ? static_cast<int32>(pPointStyleExtension->diameter)
+      //   : 0;
 
       result.pAsMeshComponent = pPointMesh;
       result.pAsCesiumPrimitive = pPointMesh;

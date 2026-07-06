@@ -303,22 +303,17 @@ float4 VertexFactoryGetRasterizedWorldPosition(
   	float4 PositionView = mul(InWorldPosition, ResolvedView.TranslatedWorldToView);
   	float4 PositionClip = mul(InWorldPosition, ResolvedView.TranslatedWorldToClip);
 
-     	  	float MaximumPointSize = AttenuationParameters.x;
+  	float2 PixelOffset = Intermediates.CornerOffset;
+  	float Diameter = AttenuationParameters.w;
+  	if (Diameter >= 1.0f) {
+   	  	PixelOffset *= Diameter * 0.5f;
+  	} else {
+   	  	float MaximumPointSize = AttenuationParameters.x;
    	  	float GeometricError = AttenuationParameters.y;
    	  	float DepthMultiplier = AttenuationParameters.z;
    	  	float Depth = PositionView.z / 100; // Get depth in meters
    	  	float PointSize = min((GeometricError / Depth) * DepthMultiplier, MaximumPointSize);
-  	float2 PixelOffset = Intermediates.CornerOffset * PointSize;
-  	float Diameter = AttenuationParameters.w;
-  	if (false) {
-   	  	//PixelOffset *= Diameter * 0.5f;
-  	} else {
-   	  	//float MaximumPointSize = AttenuationParameters.x;
-   	  	//float GeometricError = AttenuationParameters.y;
-   	  	//float DepthMultiplier = AttenuationParameters.z;
-   	  	//float Depth = PositionView.z / 100; // Get depth in meters
-   	  	//float PointSize = min((GeometricError / Depth) * DepthMultiplier, MaximumPointSize);
-   	  	//PixelOffset *= PointSize;
+   	  	PixelOffset *= PointSize;
     }
 
   	float2 ScreenOffset = PixelOffset * ResolvedView.ViewSizeAndInvSize.zw;
@@ -391,8 +386,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
   	if (AttenuationParameters.w >= 1)
   	{
   	  	// Rounds length to 0 for < 0.5, and 1 >= 0.5. The circle is defined by 1 - round.
-  	  	//Result.VertexColor.a = (1.0f - round(length(Interpolants.CornerOffset))) * Interpolants.Color.a;
-        Result.VertexColor = float4(1, 0, 1, 1);
+  	  	Result.VertexColor.a = (1.0f - round(length(Interpolants.CornerOffset))) * Interpolants.Color.a;
   	}
 
   	half3 TangentToWorld0 = Interpolants.TangentToWorld0.xyz;

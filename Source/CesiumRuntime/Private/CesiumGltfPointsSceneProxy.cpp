@@ -73,7 +73,8 @@ void FCesiumGltfPointsSceneProxy::GetDynamicMeshElements(
     FMeshElementCollector& Collector) const {
   QUICK_SCOPE_CYCLE_COUNTER(STAT_GltfPointsSceneProxy_GetDynamicMeshElements);
 
-  // The attenuation pipeline should be used if BENTLEY_materials_point_style is present.
+  // The attenuation pipeline should be used if BENTLEY_materials_point_style is
+  // present.
   bool useAttenuation = this->_tilesetData.pointCloudShading.Attenuation ||
                         this->_tilesetData.diameter >= 1;
   useAttenuation &= this->_attenuationSupported;
@@ -168,9 +169,9 @@ void FCesiumGltfPointsSceneProxy::CreatePointAttenuationUserData(
   float maximumPointSize = 1.0f;
 
   if (pointCloudShading.Attenuation) {
-    this->_tilesetData.usesAdditiveRefinement
-        ? 5.0f
-        : this->_tilesetData.maximumScreenSpaceError;
+    maximumPointSize = this->_tilesetData.usesAdditiveRefinement
+                           ? 5.0f
+                           : this->_tilesetData.maximumScreenSpaceError;
     if (pointCloudShading.MaximumAttenuation > 0.0f) {
       // Don't multiply by DPI scale; let Unreal handle scaling.
       maximumPointSize = pointCloudShading.MaximumAttenuation;
