@@ -7,9 +7,10 @@
 
 // Sets default values for this component's properties
 UCesiumGltfPointsComponent::UCesiumGltfPointsComponent()
-    : UsesAdditiveRefinement(false),
-      GeometricError(0),
-      Dimensions(glm::vec3(0)) {}
+    : usesAdditiveRefinement(false),
+      geometricError(0),
+      dimensions(glm::vec3(0)),
+      diameter(0) {}
 
 UCesiumGltfPointsComponent::~UCesiumGltfPointsComponent() {}
 
@@ -22,7 +23,7 @@ FPrimitiveSceneProxy* UCesiumGltfPointsComponent::CreateSceneProxy() {
       new FCesiumGltfPointsSceneProxy(this, FSceneInterfaceWrapper(GetScene()));
 
   FCesiumGltfPointsSceneProxyTilesetData TilesetData;
-  TilesetData.UpdateFromComponent(this);
+  TilesetData.updateFromComponent(this);
   Proxy->UpdateTilesetData(TilesetData);
 
   return Proxy;

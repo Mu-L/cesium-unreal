@@ -15,23 +15,19 @@ class UCesiumGltfPointsComponent;
  * via render thread.
  */
 struct FCesiumGltfPointsSceneProxyTilesetData {
-  FCesiumPointCloudShading PointCloudShading;
-  double MaximumScreenSpaceError;
-  bool UsesAdditiveRefinement;
-  float GeometricError;
-  glm::vec3 Dimensions;
+  FCesiumPointCloudShading pointCloudShading;
+  double maximumScreenSpaceError;
+  bool usesAdditiveRefinement;
+  float geometricError;
+  glm::vec3 dimensions;
+  int32 diameter;
 
   FCesiumGltfPointsSceneProxyTilesetData();
 
-  void UpdateFromComponent(UCesiumGltfPointsComponent* Component);
+  void updateFromComponent(UCesiumGltfPointsComponent* pComponent);
 };
 
 class FCesiumGltfPointsSceneProxy final : public FPrimitiveSceneProxy {
-private:
-  // The original render data of the static mesh.
-  const FStaticMeshRenderData* RenderData;
-  int32_t NumPoints;
-
 public:
   SIZE_T GetTypeHash() const override;
 
@@ -63,22 +59,6 @@ public:
       const FCesiumGltfPointsSceneProxyTilesetData& InTilesetData);
 
 private:
-  // Whether or not the shader platform supports attenuation.
-  bool bAttenuationSupported;
-
-  // Data from the UCesiumGltfComponent that owns this scene proxy, as well as
-  // its ACesium3DTileset.
-  FCesiumGltfPointsSceneProxyTilesetData TilesetData;
-
-  // The vertex factory and index buffer for point attenuation.
-  FCesiumPointAttenuationVertexFactory AttenuationVertexFactory;
-  FCesiumPointAttenuationIndexBuffer AttenuationIndexBuffer;
-
-  UMaterialInterface* Material;
-  FMaterialRelevance MaterialRelevance;
-
-  float GetGeometricError() const;
-
   void CreatePointAttenuationUserData(
       FMeshBatchElement& BatchElement,
       const FSceneView* View,
@@ -89,4 +69,28 @@ private:
       const FSceneView* View,
       FMeshElementCollector& Collector) const;
   void CreateMesh(FMeshBatch& Mesh) const;
+
+  float getGeometricError() const;
+
+  /**
+   * @brief The original render data of the static mesh.
+   */
+  const FStaticMeshRenderData* _pRenderData;
+  int32_t _numPoints;
+
+  /**
+   * @brief Whether or not the shader platform supports attenuation.
+   */
+  bool _attenuationSupported;
+
+  /**
+   * @brief Data from the UCesiumGltfPointsComponent that owns this scene proxy,
+   * as well as its ACesium3DTileset.
+   */
+  FCesiumGltfPointsSceneProxyTilesetData _tilesetData;
+
+  FCesiumPointAttenuationVertexFactory _attenuationVertexFactory;
+  FCesiumPointAttenuationIndexBuffer _attenuationIndexBuffer;
+  UMaterialInterface* _pMaterial;
+  FMaterialRelevance _materialRelevance;
 };

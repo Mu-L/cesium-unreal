@@ -15,7 +15,8 @@ uint NumTexCoords;
 
 // Whether or not the point cloud has per-point colors.
 uint bHasPointColors;
-float3 AttenuationParameters;
+// X = Maximum Point Size, Y = Geometric Error, Z = Depth Multiplier, W = Diameter from BENTLEY_materials_point_style if present
+float4 AttenuationParameters;
 
 #if INSTANCED_STEREO
 uint InstancedEyeIndex;
@@ -302,13 +303,24 @@ float4 VertexFactoryGetRasterizedWorldPosition(
   	float4 PositionView = mul(InWorldPosition, ResolvedView.TranslatedWorldToView);
   	float4 PositionClip = mul(InWorldPosition, ResolvedView.TranslatedWorldToClip);
 
-  	float MaximumPointSize = AttenuationParameters.x;
-  	float GeometricError = AttenuationParameters.y;
-  	float DepthMultiplier = AttenuationParameters.z;
-  	float Depth = PositionView.z / 100; // Get depth in meters
-  	float PointSize = min((GeometricError / Depth) * DepthMultiplier, MaximumPointSize);
+     	  	float MaximumPointSize = AttenuationParameters.x;
+   	  	float GeometricError = AttenuationParameters.y;
+   	  	float DepthMultiplier = AttenuationParameters.z;
+   	  	float Depth = PositionView.z / 100; // Get depth in meters
+   	  	float PointSize = min((GeometricError / Depth) * DepthMultiplier, MaximumPointSize);
+  	float2 PixelOffset = Intermediates.CornerOffset * PointSize;
+  	float Diameter = AttenuationParameters.w;
+  	if (false) {
+   	  	//PixelOffset *= Diameter * 0.5f;
+  	} else {
+   	  	//float MaximumPointSize = AttenuationParameters.x;
+   	  	//float GeometricError = AttenuationParameters.y;
+   	  	//float DepthMultiplier = AttenuationParameters.z;
+   	  	//float Depth = PositionView.z / 100; // Get depth in meters
+   	  	//float PointSize = min((GeometricError / Depth) * DepthMultiplier, MaximumPointSize);
+   	  	//PixelOffset *= PointSize;
+    }
 
-  	float2 PixelOffset = PointSize * Intermediates.CornerOffset;
   	float2 ScreenOffset = PixelOffset * ResolvedView.ViewSizeAndInvSize.zw;
   	float2 ClipOffset = ScreenOffset * PositionClip.w;
   	float4 ViewOffset = mul(float4(ClipOffset, PositionClip.z, 1), ResolvedView.ClipToView);
@@ -375,7 +387,13 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
   	Result.Particle.Color = half4(1, 1, 1, 1);
   	Result.TwoSidedSign = 1;
   	Result.VertexColor = Interpolants.Color;
-  	Result.VertexColor.a = length(Interpolants.CornerOffset) > 0.5 ? 0 : Interpolants.Color.a;
+
+  	if (AttenuationParameters.w >= 1)
+  	{
+  	  	// Rounds length to 0 for < 0.5, and 1 >= 0.5. The circle is defined by 1 - round.
+  	  	//Result.VertexColor.a = (1.0f - round(length(Interpolants.CornerOffset))) * Interpolants.Color.a;
+        Result.VertexColor = float4(1, 0, 1, 1);
+  	}
 
   	half3 TangentToWorld0 = Interpolants.TangentToWorld0.xyz;
   	half4 TangentToWorld2 = Interpolants.TangentToWorld2;
