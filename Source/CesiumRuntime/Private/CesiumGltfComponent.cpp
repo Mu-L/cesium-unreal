@@ -1713,8 +1713,7 @@ static void loadPrimitive(
   LODResources.bHasReversedDepthOnlyIndices = false;
 
   if (isTriangles) {
-    // UE 5.5 requires that we do this in order to avoid a crash when ray
-    // tracing is enabled.
+    // This is required in order to avoid a crash when ray-tracing is enabled.
     pRenderData->InitializeRayTracingRepresentationFromRenderingLODs();
   }
 
@@ -2519,7 +2518,7 @@ loadModelAnyThreadPart(
   return CesiumGltfTextures::createInWorkerThread(asyncSystem, *options.pModel)
       .thenInWorkerThread(
           [transform, ellipsoid, options = std::move(options)]() mutable
-          -> UCesiumGltfComponent::CreateOffGameThreadResult {
+              -> UCesiumGltfComponent::CreateOffGameThreadResult {
             auto pHalf = MakeUnique<HalfConstructedReal>();
 
             loadModelMetadata(pHalf->loadModelResult, options);
