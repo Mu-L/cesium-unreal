@@ -388,7 +388,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 
   	if (Interpolants.CornerOffset.x != 0 || Interpolants.CornerOffset.y != 0)
   	{
-  	  	// Rounds length to 0 for < 0.5, and 1 >= 0.5. The circle is defined by 1 - round.
+  	  	// Rounds length to 0 for < 0.5, and 1 >= 0.5.
   	  	bool outsideCircle = round(length(Interpolants.CornerOffset));
   	  	Result.VertexColor.a = float(!outsideCircle) * Interpolants.Color.a;
   	}
