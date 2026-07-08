@@ -11,20 +11,29 @@
 class UCesiumGltfPointsComponent;
 
 /**
- * Used to pass tile data and Cesium3DTileset settings to a SceneProxy, usually
- * via render thread.
+ * @brief Settings from UCesiumGltfPointsComponent and its owner
+ * ACesium3DTileset, passed via render thread to FCesiumGltfPointsSceneProxy so
+ * it may render with point attenuation.
  */
-struct FCesiumGltfPointsSceneProxyTilesetData {
-  FCesiumPointCloudShading pointCloudShading;
+struct FCesiumGltfPointsSceneProxyAttenuationData {
+  FCesiumPointCloudShading tilesetPointCloudShading;
   double maximumScreenSpaceError;
   bool usesAdditiveRefinement;
   float geometricError;
   glm::vec3 dimensions;
   int32 diameter;
 
-  FCesiumGltfPointsSceneProxyTilesetData();
+  /**
+   * @brief Constructs an instance with default values.
+   */
+  FCesiumGltfPointsSceneProxyAttenuationData();
 
-  void updateFromComponent(UCesiumGltfPointsComponent* pComponent);
+  /**
+   * @brief Constructs an instance with values from the given
+   * UCesiumGltfPointsComponent.
+   */
+  FCesiumGltfPointsSceneProxyAttenuationData(
+      UCesiumGltfPointsComponent* pComponent);
 };
 
 class FCesiumGltfPointsSceneProxy final : public FPrimitiveSceneProxy {
@@ -55,8 +64,12 @@ protected:
   virtual uint32 GetMemoryFootprint(void) const override;
 
 public:
-  void UpdateTilesetData(
-      const FCesiumGltfPointsSceneProxyTilesetData& InTilesetData);
+  /**
+   * @brief Updates the attenuation data for this scene proxy.
+   * @param InAttenuationData The new attenuation data to use.
+   */
+  void UpdateAttenuationData(
+      const FCesiumGltfPointsSceneProxyAttenuationData& InAttenuationData);
 
 private:
   void CreatePointAttenuationUserData(
@@ -70,12 +83,22 @@ private:
       FMeshElementCollector& Collector) const;
   void CreateMesh(FMeshBatch& Mesh) const;
 
+  /**
+   * @brief Returns the geometric error to use for point attenuation.
+   *
+   * If the tile's geometric error is 0, then the value will be estimated based
+   * on other tile factors.
+   */
   float getGeometricError() const;
 
   /**
    * @brief The original render data of the static mesh.
    */
   const FStaticMeshRenderData* _pRenderData;
+
+  /**
+   * @brief The number of points in the mesh.
+   */
   int32_t _numPoints;
 
   /**
@@ -84,10 +107,10 @@ private:
   bool _attenuationSupported;
 
   /**
-   * @brief Data from the UCesiumGltfPointsComponent that owns this scene proxy,
-   * as well as its ACesium3DTileset.
+   * @brief Settings from the UCesiumGltfPointsComponent that owns this scene
+   * proxy, as well as its ACesium3DTileset, that influence point attenuation.
    */
-  FCesiumGltfPointsSceneProxyTilesetData _tilesetData;
+  FCesiumGltfPointsSceneProxyAttenuationData _attenuationData;
 
   FCesiumPointAttenuationVertexFactory _attenuationVertexFactory;
   FCesiumPointAttenuationIndexBuffer _attenuationIndexBuffer;

@@ -19,14 +19,13 @@ FPrimitiveSceneProxy* UCesiumGltfPointsComponent::CreateSceneProxy() {
     return nullptr;
   }
 
-  FCesiumGltfPointsSceneProxy* Proxy =
+  FCesiumGltfPointsSceneProxy* pProxy =
       new FCesiumGltfPointsSceneProxy(this, FSceneInterfaceWrapper(GetScene()));
 
-  FCesiumGltfPointsSceneProxyTilesetData TilesetData;
-  TilesetData.updateFromComponent(this);
-  Proxy->UpdateTilesetData(TilesetData);
+  pProxy->UpdateAttenuationData(
+      FCesiumGltfPointsSceneProxyAttenuationData(this));
 
-  return Proxy;
+  return pProxy;
 }
 
 void UCesiumGltfPointsComponent::OnCreatePhysicsState() {

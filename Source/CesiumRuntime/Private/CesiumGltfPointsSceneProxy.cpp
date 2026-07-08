@@ -10,23 +10,32 @@
 #include "SceneView.h"
 #include "StaticMeshResources.h"
 
-FCesiumGltfPointsSceneProxyTilesetData::FCesiumGltfPointsSceneProxyTilesetData()
-    : pointCloudShading(),
+FCesiumGltfPointsSceneProxyAttenuationData::
+    FCesiumGltfPointsSceneProxyAttenuationData()
+    : tilesetPointCloudShading(),
       maximumScreenSpaceError(0.0),
       usesAdditiveRefinement(false),
       geometricError(0.0f),
       dimensions(),
       diameter(0) {}
 
-void FCesiumGltfPointsSceneProxyTilesetData::updateFromComponent(
-    UCesiumGltfPointsComponent* pComponent) {
-  ACesium3DTileset* pTileset = pComponent->getPrimitiveData().pTilesetActor;
-  pointCloudShading = pTileset->GetPointCloudShading();
-  maximumScreenSpaceError = pTileset->MaximumScreenSpaceError;
-  usesAdditiveRefinement = pComponent->usesAdditiveRefinement;
-  geometricError = pComponent->geometricError;
-  dimensions = pComponent->dimensions;
-  diameter = pComponent->diameter;
+FCesiumGltfPointsSceneProxyAttenuationData::
+    FCesiumGltfPointsSceneProxyAttenuationData(
+        UCesiumGltfPointsComponent* pComponent) {
+  if (!IsValid(pComponent)) {
+    return;
+  }
+
+  this->usesAdditiveRefinement = pComponent->usesAdditiveRefinement;
+  this->geometricError = pComponent->geometricError;
+  this->dimensions = pComponent->dimensions;
+  this->diameter = pComponent->diameter;
+
+  if (ACesium3DTileset* pTileset = pComponent->getPrimitiveData().pTilesetActor;
+      IsValid(pTileset)) {
+    this->tilesetPointCloudShading = pTileset->GetPointCloudShading();
+    this->maximumScreenSpaceError = pTileset->MaximumScreenSpaceError;
+  }
 }
 
 SIZE_T FCesiumGltfPointsSceneProxy::GetTypeHash() const {
@@ -43,7 +52,7 @@ FCesiumGltfPointsSceneProxy::FCesiumGltfPointsSceneProxy(
           this->_pRenderData->LODResources[0].IndexBuffer.GetNumIndices()),
       _attenuationSupported(
           RHISupportsManualVertexFetch(GetScene().GetShaderPlatform())),
-      _tilesetData(),
+      _attenuationData(),
       _attenuationVertexFactory(
           InSceneInterfaceParams.RHIFeatureLevelType,
           &this->_pRenderData->LODResources[0]
@@ -75,8 +84,9 @@ void FCesiumGltfPointsSceneProxy::GetDynamicMeshElements(
 
   // The attenuation pipeline should be used if BENTLEY_materials_point_style is
   // present.
-  bool useAttenuation = this->_tilesetData.pointCloudShading.Attenuation ||
-                        this->_tilesetData.diameter >= 1;
+  bool useAttenuation =
+      this->_attenuationData.tilesetPointCloudShading.Attenuation ||
+      this->_attenuationData.diameter >= 1;
   useAttenuation &= this->_attenuationSupported;
 
   for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++) {
@@ -120,15 +130,15 @@ uint32 FCesiumGltfPointsSceneProxy::GetMemoryFootprint(void) const {
   return (sizeof(*this) + GetAllocatedSize());
 }
 
-void FCesiumGltfPointsSceneProxy::UpdateTilesetData(
-    const FCesiumGltfPointsSceneProxyTilesetData& InTilesetData) {
-  this->_tilesetData = InTilesetData;
+void FCesiumGltfPointsSceneProxy::UpdateAttenuationData(
+    const FCesiumGltfPointsSceneProxyAttenuationData& InAttenuationData) {
+  this->_attenuationData = InAttenuationData;
 }
 
 float FCesiumGltfPointsSceneProxy::getGeometricError() const {
   FCesiumPointCloudShading pointCloudShading =
-      this->_tilesetData.pointCloudShading;
-  float geometricError = this->_tilesetData.geometricError;
+      this->_attenuationData.tilesetPointCloudShading;
+  float geometricError = this->_attenuationData.geometricError;
   if (geometricError > 0.0f) {
     return geometricError;
   }
@@ -138,7 +148,7 @@ float FCesiumGltfPointsSceneProxy::getGeometricError() const {
   }
 
   // Estimate the geometric error.
-  glm::vec3 dimensions = this->_tilesetData.dimensions;
+  glm::vec3 dimensions = this->_attenuationData.dimensions;
   float volume = dimensions.x * dimensions.y * dimensions.z;
   return FMath::Pow(volume / this->_numPoints, 1.0f / 3.0f);
 }
@@ -164,14 +174,14 @@ void FCesiumGltfPointsSceneProxy::CreatePointAttenuationUserData(
       this->_pRenderData->LODResources[0].bHasColorVertexData;
 
   FCesiumPointCloudShading pointCloudShading =
-      this->_tilesetData.pointCloudShading;
+      this->_attenuationData.tilesetPointCloudShading;
 
   float maximumPointSize = 1.0f;
 
   if (pointCloudShading.Attenuation) {
-    maximumPointSize = this->_tilesetData.usesAdditiveRefinement
+    maximumPointSize = this->_attenuationData.usesAdditiveRefinement
                            ? 5.0f
-                           : this->_tilesetData.maximumScreenSpaceError;
+                           : this->_attenuationData.maximumScreenSpaceError;
     if (pointCloudShading.MaximumAttenuation > 0.0f) {
       // Don't multiply by DPI scale; let Unreal handle scaling.
       maximumPointSize = pointCloudShading.MaximumAttenuation;
@@ -186,7 +196,7 @@ void FCesiumGltfPointsSceneProxy::CreatePointAttenuationUserData(
   float depthMultiplier =
       static_cast<float>(View->UnconstrainedViewRect.Height()) / sseDenominator;
 
-  int32 diameter = this->_tilesetData.diameter;
+  int32 diameter = this->_attenuationData.diameter;
 
   UserData.AttenuationParameters =
       FVector4f(maximumPointSize, geometricError, depthMultiplier, diameter);

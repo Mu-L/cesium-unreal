@@ -7,14 +7,15 @@
 #include "CesiumGltfPointsSceneProxy.h"
 
 /**
- * @brief Propagates settings from ACesium3DTileset to any
- * UCesiumGltfPointsComponent's that it parents.
+ * @brief Propagates settings from ACesium3DTileset to all instances of
+ * UCesiumGltfPointsComponent that it parents.
  */
 class FCesiumGltfPointsSceneProxyUpdater {
 public:
   /**
    * @brief Updates proxies with new tileset settings. Must be called from a
-   * game thread. */
+   * game thread.
+   */
   static void UpdateSettingsInProxies(ACesium3DTileset* pTileset) {
     if (!IsValid(pTileset) || !IsInGameThread()) {
       return;
@@ -25,7 +26,7 @@ public:
 
     // Used to pass tileset data updates to render thread
     TArray<FCesiumGltfPointsSceneProxy*> sceneProxies;
-    TArray<FCesiumGltfPointsSceneProxyTilesetData> proxyTilesetData;
+    TArray<FCesiumGltfPointsSceneProxyAttenuationData> proxyAttenuationData;
 
     for (UCesiumGltfPointsComponent* pPointsComponent : componentArray) {
       FCesiumGltfPointsSceneProxy* pPointsProxy =
@@ -35,18 +36,17 @@ public:
         sceneProxies.Add(pPointsProxy);
       }
 
-      FCesiumGltfPointsSceneProxyTilesetData tilesetData;
-      tilesetData.updateFromComponent(pPointsComponent);
-      proxyTilesetData.Add(tilesetData);
+      proxyAttenuationData.Add(
+          FCesiumGltfPointsSceneProxyAttenuationData(pPointsComponent));
     }
 
     // Update tileset data
     ENQUEUE_RENDER_COMMAND(TransferCesium3DTilesetSettingsToPointsProxies)
     ([sceneProxies,
-      proxyTilesetData](FRHICommandListImmediate& RHICmdList) mutable {
+      proxyAttenuationData](FRHICommandListImmediate& RHICmdList) mutable {
       // Iterate over proxies and update their data
       for (int32 i = 0; i < sceneProxies.Num(); i++) {
-        sceneProxies[i]->UpdateTilesetData(proxyTilesetData[i]);
+        sceneProxies[i]->UpdateAttenuationData(proxyAttenuationData[i]);
       }
     });
   }
