@@ -88,7 +88,7 @@ struct FVertexFactoryInterpolantsVSToPS
   	TANGENTTOWORLD_INTERPOLATOR_BLOCK
   	half4   Color : COLOR0;
   	float2  CornerOffset : CORNER_OFFSET;
-  
+
 #if NUM_TEX_COORD_INTERPOLATORS
   	float4  TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2]  : TEXCOORD0;
 #endif
@@ -165,14 +165,14 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
   	// with a y-inverting transform. To compensate, we create the quad facing the
   	// wrong way, such that when the transform is applied, the quad faces the right
   	// way.
-    
+
   	// Results in -0.5 for 0, 1 and 0.5 for 2, 3
   	float OffsetX = CornerIndex / 2 - 0.5;
   	float OffsetY = -0.5f;
   	if (CornerIndex == 1 || CornerIndex == 2) {
    	  	OffsetY = 0.5;
   	}
-  
+
   	Intermediates.PointIndex = PointIndex;
   	Intermediates.CornerOffset = float2(OffsetX, OffsetY);
 
@@ -224,7 +224,7 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(
   	Interpolants.TangentToWorld0 = float4(Intermediates.TangentToWorld[0], 0);
   	Interpolants.TangentToWorld2 = float4(Intermediates.TangentToWorld[2], Intermediates.TangentToWorldSign);
   	Interpolants.Color = Intermediates.Color;
-  
+
   	// CornerOffset is only needed for circle rendering.
   	bool renderCircles = AttenuationParameters.w >= 1;
   	Interpolants.CornerOffset = renderCircles ? Intermediates.CornerOffset : float2(0, 0);
